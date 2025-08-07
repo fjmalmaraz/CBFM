@@ -7,7 +7,7 @@ date: "2025-03-05"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+Load data set 
 ```{r}
 library(magrittr)
 library(phyloseq)
@@ -20,13 +20,14 @@ BacteriaBase <- BacteriaBase_all  %>%
 
 
 ```
+### 
 
 ```{r}
 set.seed(101)
-output_ANCOM_15 <- ANCOMBC::ancombc2(data = BacteriaBase, tax_level = "Genus",
+output_ANCOM <- ANCOMBC::ancombc2(data = BacteriaBase, tax_level = "Genus",
                   fix_formula = "Pathology", rand_formula = NULL,
                   p_adj_method = "holm", pseudo_sens = TRUE,
-                  prv_cut = 0.15, # filtro quedarse con los que esten en al menos 10%
+                  prv_cut = 0.2, # filtro quedarse con los que esten en al menos 20%
                   lib_cut = 5000, ### todas las librerias con al menos esas lecturas 
                   s0_perc = 0.05, ## default value 
                   group = "Pathology",
@@ -60,7 +61,7 @@ list_hits <- output_ANCOM$res %>%
 
 ```
 
-
+### VOLCANO graph for ANCOM 
   
 ```{r volcano-ancom}
 
@@ -83,7 +84,4 @@ output_ANCOM$res %>%
     theme(legend.position="none")
   
 ``` 
-```
-```{r}
 
-```
