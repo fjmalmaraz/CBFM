@@ -1,21 +1,21 @@
 
 ### PRIMER PASO (ETAPA 1): generar un excel con las columnas 'sample-id', 'forward-absolute-filepath'
-y 'reverse-absolute-filepath' donde indicamos los ficheros y su localización, con '$' delante. p.ej:
+### y 'reverse-absolute-filepath' donde indicamos los ficheros y su localización, con '$' delante. p.ej:
 
-	Sample-id: FM019	
-	forward-absolute-filepath: $PWD/CBFM_Raw/21351-FM019-A-P214053-2-2389-16S_S29_L001_R1_001.fastq.gz
-	reverse-absolute-filepath: $PWD/CBFM_Raw/21351-FM019-A-P214053-2-2389-16S_S29_L001_R2_001.fastq.gz
+###	Sample-id: FM019	
+###	forward-absolute-filepath: $PWD/CBFM_Raw/21351-FM019-A-P214053-2-2389-16S_S29_L001_R1_001.fastq.gz
+###	reverse-absolute-filepath: $PWD/CBFM_Raw/21351-FM019-A-P214053-2-2389-16S_S29_L001_R2_001.fastq.gz
 
 ### Para fusionar ficheros tenemos esta opción (sin necesidad de activar qiime2). 
-"DCIN" es la carpeta donde se encuentran los archivos originales.
+### "DCIN" es la carpeta donde se encuentran los archivos originales.
 
-	mkdir Fusion
-	zless DCIN/FICHERO1.gz DCIN/FICHERO2.fastq.gz | 
-	gzip > Fusion/FIB038-A.fastq.gz
+#	mkdir Fusion
+#	zless DCIN/FICHERO1.gz DCIN/FICHERO2.fastq.gz | 
+#	gzip > Fusion/FIB038-A.fastq.gz
 
 
 ### Una vez tenemos el Excel hay que guardarlo en formato texto delimitado por tabulaciones (.txt), 
-al cual hay que forzarle el cambio a la terminación .tsv
+# al cual hay que forzarle el cambio a la terminación .tsv
 
 
 ### Con este fichero ejecutamos lo siguiente (primero activamos qiime escribiendo en la terminal: conda activate qiime2):
@@ -26,16 +26,16 @@ al cual hay que forzarle el cambio a la terminación .tsv
  	--output-path CBFM_01_sequences.qza
 
 ### Para ver la calidad de los ficheros, antes de hacer cutadapt o dada2 o lo que vayamos a hacer, lo visualizamos, para ello 
-generamos un fichero .qzv que luego visualizamos en qiime2.
+### generamos un fichero .qzv que luego visualizamos en qiime2.
 
 	qiime demux summarize \
  	--i-data ./CBFM_01_sequences.qza \
   	--o-visualization ./CBFM_01_sequences.qzv
 
 ### Una vez generado el fichero .qza (en este caso, 'CBFM_01_sequences.qza') procedemos a eliminar el PRIMER de las lecturas,
-para ello existen dos formas, cutadapt y dada2 (No es exactamente así);
-Dada2 asigna a las lecturas un ASV que es una única Amplicon Sequence Variant una vez eliminado los ruidos. 
-Cutadapt elimina adaptadores, primers y Poly-A. 
+### para ello existen dos formas, cutadapt y dada2 (No es exactamente así);
+### Dada2 asigna a las lecturas un ASV que es una única Amplicon Sequence Variant una vez eliminado los ruidos. 
+### Cutadapt elimina adaptadores, primers y Poly-A. 
 
 ### CUTADAPT:
 
