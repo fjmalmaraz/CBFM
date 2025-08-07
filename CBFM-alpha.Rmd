@@ -1,0 +1,191 @@
+---
+title: "CBFM-alpha: Study of the alpha diversity"
+output: pdf_document
+---
+
+
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(fig.width=6,dev=c("pdf","svg"),fig.path="figures/")
+par(mar = c(5, 4, 4, 2) + 0.3)
+```
+
+```{r echo=TRUE, warning=FALSE, message=FALSE}
+library(magrittr)
+library(phyloseq)
+library(ggplot2)
+load("CBFM_2025.02.18_BacteriaBase_all.Rdata")
+GlomGr0 <- function(data,j){
+    Bg <- data %>% {tax_glom(.,taxrank=rank_names(data)[j])} 
+    tax_table(Bg) <- tax_table(Bg)[,1:j]
+    Bg
+}
+
+
+BacteriaBase <- BacteriaBase_all
+
+ GenusCBFM <- BacteriaBase %>%
+      GlomGr0(6)  %>%
+    prune_taxa(taxa=taxa_sums(.)>0,x=.)
+
+#remove(BacteriaBase)
+
+ sample_data(GenusCBFM)$Pathology <- as.factor(sample_data(GenusCBFM)$Pathology) 
+
+Diversity <- sample_data(BacteriaBase) %>%
+    tibble::as_tibble(rownames="Sample") %>%
+    tibble::add_column(estimate_richness(BacteriaBase,measures=c("Shannon"))) %>%
+    tibble::add_column(estimate_richness(BacteriaBase,measures=c("Chao1"))) %>% 
+   dplyr::left_join(
+     BacteriaBase |> psmelt() %>% 
+       dplyr::group_by(Sample) %>%
+       dplyr::summarise(reads=sum(Abundance)),
+     by=dplyr::join_by(Sample==Sample)
+   ) 
+
+Diversity%<>%  
+  tibble::add_column(
+        genus=estimate_richness(BacteriaBase %>%
+                                            GlomGr0(6)  %>%
+                                            prune_taxa(taxa=taxa_sums(.)>0,x=.),
+                                        measures=c("Shannon"))) %>%
+  tibble::add_column(
+        family=estimate_richness(BacteriaBase %>%
+                                            GlomGr0(5)  %>%
+                                            prune_taxa(taxa=taxa_sums(.)>0,x=.),
+                                        measures=c("Shannon"))) %>%
+  tibble::add_column(
+        order=estimate_richness(BacteriaBase %>%
+                                            GlomGr0(4)  %>%
+                                            prune_taxa(taxa=taxa_sums(.)>0,x=.),
+                                        measures=c("Shannon"))) %>%
+ tibble::add_column(
+        class=estimate_richness(BacteriaBase %>%
+                                            GlomGr0(3)  %>%
+                                            prune_taxa(taxa=taxa_sums(.)>0,x=.),
+                                        measures=c("Shannon"))) %>%
+  tibble::add_column(
+        phylum=estimate_richness(BacteriaBase %>%
+                                            GlomGr0(2)  %>%
+                                            prune_taxa(taxa=taxa_sums(.)>0,x=.),
+                                        measures=c("Shannon"))) 
+
+Diversity %<>% 
+  tibble::add_column(
+    ratio_firm_bacte= BacteriaBase %>%
+                      GlomGr0(2)  %>%
+                      prune_taxa(taxa=taxa_sums(.)>0,x=.) %>%
+                      psmelt() %>%
+                      dplyr::filter(Phylum %in% c("Bacteroidota","Firmicutes")) %>% 
+                      dplyr::select(Sample,Abundance,Phylum) %>%
+                      tidyr::pivot_wider(names_from = Phylum,values_from=Abundance) %>%     
+                      dplyr::mutate(ratio_firm_bacte=Firmicutes/Bacteroidota) %>% 
+                      dplyr::pull(ratio_firm_bacte)
+  )
+
+Diversity$Pathology <- Diversity$Pathology  %>% forcats::fct_recode(Control="Control",Fibromyalgia="Fibromialgia")
+
+```
+
+## Box plot with the statistics measuring biodiversity  
+
+### Shannon
+
+```{r CBFM-Shannon-asv ,fig.width=4,fig.height=2,fig.cap="CPH-Shannon. Shannon index depending on the groups"} 
+
+
+Diversity %>%
+    ggplot(aes(x=Pathology,y=Shannon))+
+                 labs(title=NULL)+
+                 ylab("Shannon index")+
+    geom_violin(alpha=.9)+theme_light() +
+    geom_point(size=3,alpha=.25,col="red")+
+    geom_boxplot(alpha=.3,col="blue")
+
+```
+ 
+### Cao1 
+
+```{r CBFM-Chao-asv,fig.width=4,fig.height=2, fig.cap="CPH-Chao. Shannon index depending on the groups"} 
+
+Diversity %>% 
+    ggplot(aes(x=Pathology,y=Chao1))+
+                 labs(title=NULL)+
+    ylab("Chao index")+
+    geom_violin(alpha=.9)+theme_light() +
+    geom_point(size=3,alpha=.25,col="red")+
+    geom_boxplot(alpha=.3,col="blue")
+
+```
+
+## Hypothesis testing with ASV  
+
+### Shannon
+
+```{r}
+var.test(Diversity$Shannon[Diversity$Pathology=="Control"],
+         Diversity$Shannon[Diversity$Pathology=="Fibromyalgia"])
+```
+
+```{r}
+t.test(Diversity$Shannon[Diversity$Pathology=="Control"],
+       Diversity$Shannon[Diversity$Pathology=="Fibromyalgia"],var.equal = FALSE)
+```
+As long as the the distribution is apparently not normal, we use a non-parametric test:  
+```{r}
+ wilcox.test(Shannon ~ Pathology,data=Diversity)
+```
+
+```{r}
+effectsize::rank_biserial(
+  Diversity$Shannon[Diversity$Pathology=="Control"],
+  Diversity$Shannon[Diversity$Pathology=="Fibromyalgia"],
+  ci=0.95)
+```
+
+### Hypothesis testing with genus, family
+
+We think that the most appropriate way to estimate biodiversity is with ASV
+
+group by genus
+```{r}
+wilcox.test(Diversity$genus$Shannon[Diversity$Pathology=="Fibromyalgia"],Diversity$genus$Shannon[Diversity$Pathology=="Control"])
+```
+
+group by family
+
+```{r}
+wilcox.test(Diversity$family$Shannon[Diversity$Pathology=="Fibromyalgia"],Diversity$family$Shannon[Diversity$Pathology=="Control"])
+```
+
+
+### Cha0
+
+```{r}
+var.test(Diversity$Chao1[Diversity$Pathology=="Control"],
+         Diversity$Chao1[Diversity$Pathology=="Fibromyalgia"])
+```
+
+```{r}
+t.test(Diversity$Chao1[Diversity$Pathology=="Control"],
+       Diversity$Chao1[Diversity$Pathology=="Fibromyalgia"],var.equal = FALSE)
+```
+
+
+We calculate an estimate of Hedges' g effect size 
+```{r}
+effectsize::hedges_g(Diversity$Shannon[Diversity$Pathology=="Control"],
+          Diversity$Shannon[Diversity$Pathology=="Fibromyalgia"],
+          ci=0.95)
+```
+
+
+### Relative Abubdance distribution
+
+```{r CBFM_bar_relative_abundance,fig.cap="bar_relative_abundance" }
+nivelI <- 2
+nivel <- rank_names(BacteriaBase)[nivelI] 
+BacteriaBase %>% GlomGr0(nivelI)  |> transform_sample_counts(function(x){100*x/sum(x)}) |> psmelt() |> dplyr::select(Pathology,Phylum,Abundance) |> dplyr::group_by(Pathology,Phylum) %>% dplyr::summarise(mean_abundance=mean(Abundance))  %>%
+     ggplot(aes(x=Pathology,y=mean_abundance,fill=Phylum))  +geom_col() 
+
+```
