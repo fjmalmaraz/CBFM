@@ -1,0 +1,89 @@
+---
+title: "ANCOM-BC"
+output: pdf_document
+date: "2025-03-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(magrittr)
+library(phyloseq)
+library(ggplot2)
+load("CBFM_2025.02.18_BacteriaBase_all.Rdata")
+
+
+BacteriaBase <- BacteriaBase_all  %>%
+     prune_taxa(taxa=taxa_sums(.)>0,x=.) 
+
+
+```
+
+```{r}
+set.seed(101)
+output_ANCOM_15 <- ANCOMBC::ancombc2(data = BacteriaBase, tax_level = "Genus",
+                  fix_formula = "Pathology", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.15, # filtro quedarse con los que esten en al menos 10%
+                  lib_cut = 5000, ### todas las librerias con al menos esas lecturas 
+                  s0_perc = 0.05, ## default value 
+                  group = "Pathology",
+                  struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  #global = TRUE,      
+                  #pairwise = TRUE, #For multigroup comparison 
+                  #dunnet = TRUE, 
+                  #trend = TRUE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100)
+                 )
+```
+
+```{r}
+
+output_ANCOM$res %>% 
+  dplyr::filter(q_PathologyFibromialgia<0.1) %>% 
+  dplyr::arrange(p_PathologyFibromialgia) %>% 
+  dplyr::select(taxon,lfc_PathologyFibromialgia,p_PathologyFibromialgia,q_PathologyFibromialgia) %>% 
+  knitr::kable(row.names = FALSE)
+```
+
+```{r} 
+level_fdr <- 0.1 
+list_hits <- output_ANCOM$res %>%  
+  dplyr::arrange(p_PathologyFibromialgia) %>%
+  dplyr::filter(q_PathologyFibromialgia <level_fdr) %>%
+  dplyr::pull(taxon) %>% unique()
+
+```
+
+
+  
+```{r volcano-ancom}
+
+### https:://lashlock.github.io/compbio/R_presentation.html
+### qime2r jmsanz
+level_fdr <- 0.1 
+output_ANCOM$res %>%
+    ggplot2::ggplot(aes(x=lfc_PathologyFibromialgia,y=-log10(p_PathologyFibromialgia))) +
+    ggplot2::geom_point(alpha=0.6) +
+    ggplot2::geom_point(data=. %>% dplyr::filter(q_PathologyFibromialgia<level_fdr)
+                       ,col="blue",alpha=0.6) +
+    ggplot2::geom_point(data=. %>% dplyr::filter(q_PathologyFibromialgia<level_fdr,abs(lfc_PathologyFibromialgia)>0.5),
+                        col="red") +
+    ggplot2::geom_text(data=. %>%
+                           dplyr::filter(q_PathologyFibromialgia<level_fdr,lfc_PathologyFibromialgia>0.05) %>%
+                       dplyr::mutate(Code=sapply(taxon,function(x){which(list_hits==x)})),
+                       aes(x=lfc_PathologyFibromialgia,y=-log10(p_PathologyFibromialgia),label=Code),
+                       nudge_y=0.1,cex=5,col="red") +
+    ggplot2::labs(x="lfc",y="-log_10(p-value)") +
+    theme(legend.position="none")
+  
+``` 
+```
+```{r}
+
+```
